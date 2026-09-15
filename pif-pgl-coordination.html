@@ -1,0 +1,350 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PIF PGL 2026-2027 — Coordination</title>
+<meta name="theme-color" content="#12232B">
+
+<style>
+:root{
+  --encre:#12232B; --encre-clair:#2B4451; --ardoise:#6C838E;
+  --papier:#ECEFEF; --carte:#FFFFFF; --trait:#D8E0E0;
+  --vert:#0F7B62; --vert-pale:#E3F1EC;
+  --brique:#C8462A; --brique-pale:#FBE7E1;
+  --ambre:#D99411; --ambre-pale:#FBF0D9;
+  --r:14px;
+  --serif:Georgia,"Iowan Old Style","Times New Roman",serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:var(--sans);background:var(--papier);color:var(--encre);
+  -webkit-text-size-adjust:100%;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+
+header{background:var(--encre);color:#fff;padding:18px 20px 20px;
+  padding-top:calc(18px + env(safe-area-inset-top))}
+.projet{font-size:12px;letter-spacing:.14em;color:#8FA9B4;margin:0 0 10px}
+.total{font-family:var(--serif);font-size:44px;line-height:1;letter-spacing:-.02em}
+.total-sous{font-size:13px;color:#9DB6C0;margin-top:7px}
+.jauge{display:flex;gap:2px;height:26px;margin-top:16px;align-items:flex-end}
+.jauge div{flex:1;background:#2B4451;border-radius:2px 2px 0 0;min-height:3px;transition:height .4s}
+.jauge div.actif{background:#4FD1A5}
+.jauge-legende{display:flex;justify-content:space-between;font-size:10px;color:#7B96A2;margin-top:5px}
+
+main{padding:16px 14px 20px;max-width:760px;margin:0 auto}
+.vue{display:none}.vue.ouverte{display:block}
+h2{font-size:17px;margin:0 0 12px;font-weight:650}
+h2.suite{margin-top:26px}
+.sous-titre{font-size:13px;color:var(--ardoise);margin:-8px 0 14px}
+
+.rang{display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:center;
+  background:var(--carte);border:1px solid var(--trait);border-radius:var(--r);
+  padding:12px 14px;margin-bottom:8px}
+.rang .place{font-family:var(--serif);font-size:15px;color:var(--ardoise);text-align:center}
+.rang .nom{font-weight:650;font-size:15px}
+.rang .detail{font-size:12px;color:var(--ardoise);margin-top:2px}
+.rang .gain{font-family:var(--serif);font-size:19px;text-align:right;white-space:nowrap}
+.barre{grid-column:1/4;height:4px;background:#E9EDED;border-radius:2px;overflow:hidden;margin-top:9px}
+.barre span{display:block;height:100%;background:var(--vert);border-radius:2px}
+
+.chiffres{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:22px}
+.chiffre{background:var(--carte);border:1px solid var(--trait);border-radius:var(--r);padding:13px}
+.chiffre.large{grid-column:1/3}
+.chiffre .valeur{font-family:var(--serif);font-size:26px;line-height:1.1}
+.chiffre.large .valeur{font-size:34px}
+.chiffre .quoi{font-size:12px;color:var(--ardoise);margin-top:5px}
+.chiffre.vert .valeur{color:var(--vert)}
+.chiffre.rouge .valeur{color:var(--brique)}
+
+.mois-ligne{display:grid;grid-template-columns:82px 1fr 78px;align-items:center;gap:10px;
+  font-size:13px;margin-bottom:6px}
+.mois-barre{height:9px;background:#E1E6E6;border-radius:5px;overflow:hidden}
+.mois-barre span{display:block;height:100%;background:var(--encre-clair);border-radius:5px;transition:width .4s}
+.mois-somme{text-align:right;font-family:var(--serif);font-size:15px}
+.mois-ligne.vide{color:#A9B7BC}
+
+.dette{background:var(--carte);border:1px solid var(--trait);border-left:3px solid var(--brique);
+  border-radius:10px;padding:11px 13px;margin-bottom:7px;display:flex;
+  justify-content:space-between;align-items:center;gap:10px}
+.dette .qui{font-size:12px;color:var(--ardoise);margin-top:2px}
+.dette .somme{font-family:var(--serif);font-size:17px;white-space:nowrap}
+
+nav{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.94);
+  backdrop-filter:blur(12px);border-top:1px solid var(--trait);display:flex;
+  padding:8px 6px calc(8px + env(safe-area-inset-bottom));z-index:40}
+nav button{flex:1;padding:7px 2px;font-size:11px;color:var(--ardoise);border-radius:10px}
+nav button .pic{display:block;font-size:19px;line-height:1.3}
+nav button[aria-current="true"]{color:var(--encre);font-weight:650}
+
+.vide{text-align:center;padding:44px 20px;color:var(--ardoise)}
+.vide p{margin:0 0 4px;font-size:15px;color:var(--encre);font-weight:600}
+.vide span{font-size:13px}
+.outils{display:flex;gap:8px;flex-wrap:wrap;margin-top:24px}
+.outils button{flex:1;min-width:150px;padding:11px;border:1px solid var(--trait);
+  border-radius:10px;background:var(--carte);font-size:13px}
+.avis{background:var(--ambre-pale);color:#7A5200;font-size:12px;padding:9px 14px;
+  text-align:center;display:none}
+.avis.visible{display:block}
+@media (min-width:640px){
+  .total{font-size:54px}
+  .chiffres{grid-template-columns:repeat(3,1fr)}
+  .chiffre.large{grid-column:1/4}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="avis" id="avis"></div>
+
+<header>
+  <p class="projet">PIF PGL 2026-2027 · COORDINATION</p>
+  <div class="total" id="entete-total">0 €</div>
+  <div class="total-sous" id="entete-sous">Aucune action enregistrée</div>
+  <div class="jauge" id="jauge"></div>
+  <div class="jauge-legende"><span>sept.</span><span>juin</span></div>
+</header>
+
+<main>
+  <section class="vue ouverte" id="vue-bilan">
+    <h2>Qui a rapporté combien</h2>
+    <p class="sous-titre">Chaque action est partagée à parts égales entre ses participants. Un projet de groupe est partagé entre les 20.</p>
+    <div id="liste-bilan"></div>
+  </section>
+
+  <section class="vue" id="vue-bord">
+    <h2>Chiffres clés</h2>
+    <div class="chiffres" id="chiffres"></div>
+
+    <h2 class="suite">Mois par mois</h2>
+    <p class="sous-titre">La collecte se termine en juin.</p>
+    <div id="mois"></div>
+
+    <h2 class="suite">Argent à récupérer</h2>
+    <div id="dettes"></div>
+
+    <div class="outils">
+      <button onclick="importerJSON()">Ajouter un fichier reçu</button>
+      <button onclick="exporterJSON()">Sauvegarder tout</button>
+      <button onclick="exporterCSV()">Exporter en CSV</button>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button data-vue="bilan" aria-current="true"><span class="pic">🏅</span>Bilan</button>
+  <button data-vue="bord"><span class="pic">📊</span>Tableau de bord</button>
+</nav>
+
+<script>
+/* ================================================================
+   SITE COORDINATEUR — bilan et tableau de bord, en lecture seule.
+   La saisie des actions se fait sur l'autre site.
+   ----------------------------------------------------------------
+   Mets la même adresse d'API que sur le site de saisie et les deux
+   travailleront sur les mêmes données :
+     GET {API_BASE}/actions      → tableau JSON des actions
+     GET {API_BASE}/membres      → (facultatif) ["Anouk","Lola",…]
+   Sans API, ce site lit les fichiers JSON que les participants
+   t'envoient depuis le site de saisie (bouton « Ajouter un fichier reçu »).
+================================================================ */
+const API_BASE = null;           // ex. "https://mon-serveur.fr/api"
+const PREMIER_MOIS = "2026-09";
+const NB_MOIS = 10;
+
+let MEMBRES = ["Anouk","Lola","Samuel","Ben","Jade","Mia","Salomé","Solal","Gab","Gabi",
+               "Tamar","Gary","Ilan","Noam","Neal","Sacha","Ron","Zach","Elinora","Léana"];
+
+const CLE = "pifpgl-coordination";
+let memoire = [], stockageOK = true;
+try{ localStorage.setItem("__t__","1"); localStorage.removeItem("__t__"); }catch(e){ stockageOK = false; }
+
+const Base = {
+  async lire(){
+    if(API_BASE){
+      const r = await fetch(API_BASE + "/actions");
+      if(!r.ok) throw new Error("Lecture impossible (" + r.status + ")");
+      return await r.json();
+    }
+    if(!stockageOK) return memoire;
+    try{ return JSON.parse(localStorage.getItem(CLE) || "[]"); }catch(e){ return []; }
+  },
+  async ecrire(t){
+    memoire = t;
+    if(!API_BASE && stockageOK) localStorage.setItem(CLE, JSON.stringify(t));
+  }
+};
+
+const nb = n => Number(n) || 0;
+const parPersonne = a => {
+  const d = a.groupe ? MEMBRES.length : nb(a.nbParticipants);
+  return d > 0 ? nb(a.montant) / d : 0;
+};
+const aParticipe = (a, nom) => a.groupe || (a.participants || []).includes(nom);
+
+function bilan(actions){
+  const lignes = MEMBRES.map(nom => {
+    let montant = 0, heures = 0, jobs = 0;
+    actions.forEach(a => {
+      if(!aParticipe(a, nom)) return;
+      montant += parPersonne(a); heures += nb(a.duree); jobs++;
+    });
+    return {nom, montant, heures, jobs, parHeure: heures > 0 ? montant / heures : null};
+  });
+  const total = lignes.reduce((s,l) => s + l.montant, 0);
+  lignes.forEach(l => l.part = total > 0 ? l.montant / total : 0);
+  return lignes.sort((a,b) => b.montant - a.montant);
+}
+function moisCollecte(){
+  const [an, mo] = PREMIER_MOIS.split("-").map(Number);
+  return Array.from({length:NB_MOIS}, (_, i) => {
+    const d = new Date(an, mo - 1 + i, 1);
+    return {cle: d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0"),
+            libelle: d.toLocaleDateString("fr-FR",{month:"long"}), annee: d.getFullYear()};
+  });
+}
+
+const euro = n => new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",
+  maximumFractionDigits: Math.abs(n) >= 100 || n % 1 === 0 ? 0 : 2}).format(n || 0);
+const euro2 = n => new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",
+  minimumFractionDigits:2, maximumFractionDigits:2}).format(n || 0);
+const jour = d => d ? new Date(d + "T12:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"short"}) : "Sans date";
+const echappe = s => String(s == null ? "" : s).replace(/[&<>"]/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let ACTIONS = [];
+
+function toutAfficher(){ afficherEntete(); afficherBilan(); afficherBord(); }
+
+function afficherEntete(){
+  const total = ACTIONS.reduce((s,a) => s + nb(a.montant), 0);
+  const n = ACTIONS.length;
+  document.getElementById("entete-total").textContent = euro(total);
+  document.getElementById("entete-sous").textContent =
+    n === 0 ? "Aucune action enregistrée" : n + (n > 1 ? " actions" : " action") + " · " + MEMBRES.length + " participants";
+  const vals = moisCollecte().map(m => ACTIONS.filter(a => (a.date||"").slice(0,7) === m.cle)
+                                              .reduce((s,a) => s + nb(a.montant), 0));
+  const max = Math.max(...vals, 1);
+  document.getElementById("jauge").innerHTML = vals
+    .map(v => `<div class="${v>0?"actif":""}" style="height:${Math.max(3, v/max*26)}px"></div>`).join("");
+}
+
+function afficherBilan(){
+  const cible = document.getElementById("liste-bilan");
+  if(!ACTIONS.length){
+    cible.innerHTML = `<div class="vide"><p>Rien à afficher</p><span>Branche l'API ou ajoute un fichier reçu depuis le tableau de bord.</span></div>`;
+    return;
+  }
+  const lignes = bilan(ACTIONS);
+  const max = Math.max(...lignes.map(l => l.montant), 1);
+  cible.innerHTML = lignes.map((l, i) => `
+    <div class="rang">
+      <div class="place">${i + 1}</div>
+      <div>
+        <div class="nom">${echappe(l.nom)}</div>
+        <div class="detail">${l.jobs} action${l.jobs > 1 ? "s" : ""} · ${l.heures.toLocaleString("fr-FR")} h${
+          l.parHeure ? " · " + euro2(l.parHeure) + "/h" : ""}</div>
+      </div>
+      <div class="gain">${euro(l.montant)}</div>
+      <div class="barre"><span style="width:${l.montant / max * 100}%"></span></div>
+    </div>`).join("");
+}
+
+function afficherBord(){
+  const total    = ACTIONS.reduce((s,a) => s + nb(a.montant), 0);
+  const heures   = ACTIONS.reduce((s,a) => s + nb(a.duree), 0);
+  const encaisse = ACTIONS.filter(a => a.encaisse !== false).reduce((s,a) => s + nb(a.montant), 0);
+  const attente  = total - encaisse;
+  const groupes  = ACTIONS.filter(a => a.groupe).length;
+
+  document.getElementById("chiffres").innerHTML = `
+    <div class="chiffre large"><div class="valeur">${euro(total)}</div><div class="quoi">Total récolté</div></div>
+    <div class="chiffre"><div class="valeur">${ACTIONS.length}</div><div class="quoi">Actions${groupes ? " dont " + groupes + " en groupe" : ""}</div></div>
+    <div class="chiffre"><div class="valeur">${heures.toLocaleString("fr-FR")} h</div><div class="quoi">Durée cumulée</div></div>
+    <div class="chiffre"><div class="valeur">${heures ? euro2(total/heures) : "—"}</div><div class="quoi">Par heure d'action</div></div>
+    <div class="chiffre vert"><div class="valeur">${euro(encaisse)}</div><div class="quoi">Déjà encaissé</div></div>
+    <div class="chiffre ${attente > 0 ? "rouge" : ""}"><div class="valeur">${euro(attente)}</div><div class="quoi">Encore en attente</div></div>`;
+
+  const mois = moisCollecte();
+  const vals = mois.map(m => ACTIONS.filter(a => (a.date||"").slice(0,7) === m.cle)
+                                    .reduce((s,a) => s + nb(a.montant), 0));
+  const max = Math.max(...vals, 1);
+  document.getElementById("mois").innerHTML = mois.map((m, i) => `
+    <div class="mois-ligne ${vals[i] ? "" : "vide"}">
+      <span>${m.libelle} ${String(m.annee).slice(2)}</span>
+      <span class="mois-barre"><span style="width:${vals[i] / max * 100}%"></span></span>
+      <span class="mois-somme">${vals[i] ? euro(vals[i]) : "—"}</span>
+    </div>`).join("");
+
+  const dues = ACTIONS.filter(a => a.encaisse === false)
+                      .sort((a,b) => (a.date || "").localeCompare(b.date || ""));
+  document.getElementById("dettes").innerHTML = dues.length
+    ? dues.map(a => `<div class="dette">
+        <div>
+          <div>${echappe(a.nom) || "Sans nom"}</div>
+          <div class="qui">${jour(a.date)}${a.client ? " · " + echappe(a.client) : ""}${a.contact ? " · " + echappe(a.contact) : ""}</div>
+        </div>
+        <div class="somme">${euro(nb(a.montant))}</div>
+      </div>`).join("")
+    : `<p class="sous-titre">Tout est encaissé.</p>`;
+}
+
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-current", String(x === b)));
+  document.querySelectorAll(".vue").forEach(v => v.classList.remove("ouverte"));
+  document.getElementById("vue-" + b.dataset.vue).classList.add("ouverte");
+  window.scrollTo(0,0);
+});
+
+function telecharger(contenu, nom, type){
+  const url = URL.createObjectURL(new Blob([contenu], {type}));
+  const a = document.createElement("a");
+  a.href = url; a.download = nom; a.click();
+  URL.revokeObjectURL(url);
+}
+function exporterJSON(){ telecharger(JSON.stringify(ACTIONS, null, 2), "pif-pgl-tout.json", "application/json"); }
+function exporterCSV(){
+  const cols = ["date","nom","client","contact","lieu","montant","duree","groupe",
+                "nbParticipants","participants","encaisse","paiement","gardePar","notes"];
+  const cell = v => '"' + String(Array.isArray(v) ? v.join(" / ") : v ?? "").replace(/"/g,'""') + '"';
+  telecharger("\uFEFF" + [cols.join(";"), ...ACTIONS.map(a => cols.map(c => cell(a[c])).join(";"))].join("\n"),
+              "pif-pgl-actions.csv", "text/csv");
+}
+function importerJSON(){
+  if(API_BASE){ signaler("Les données viennent de l'API, l'import est inutile."); return; }
+  const input = document.createElement("input");
+  input.type = "file"; input.accept = ".json,application/json"; input.multiple = true;
+  input.onchange = async () => {
+    try{
+      let ajoutees = 0, connues = new Set(ACTIONS.map(a => a.id));
+      for(const f of input.files){
+        const donnees = JSON.parse(await f.text());
+        if(!Array.isArray(donnees)) throw new Error(f.name + " ne contient pas une liste d'actions.");
+        donnees.forEach(a => {
+          if(!a.id || connues.has(a.id)) return;   // pas de doublon
+          connues.add(a.id); ACTIONS.push(a); ajoutees++;
+        });
+      }
+      await Base.ecrire(ACTIONS);
+      toutAfficher();
+      signaler(ajoutees ? ajoutees + " action" + (ajoutees > 1 ? "s ajoutées" : " ajoutée") : "Ces actions étaient déjà là.");
+    }catch(err){ signaler(err.message); }
+  };
+  input.click();
+}
+function signaler(m){
+  const a = document.getElementById("avis");
+  a.textContent = m; a.classList.add("visible");
+  clearTimeout(signaler.t);
+  signaler.t = setTimeout(() => a.classList.remove("visible"), 4500);
+}
+
+(async function(){
+  if(API_BASE){
+    try{
+      const r = await fetch(API_BASE + "/membres");
+      if(r.ok){ const m = await r.json(); if(Array.isArray(m) && m.length) MEMBRES = m; }
+    }catch(e){}
+  }
+  try{ ACTIONS = await Base.lire(); }catch(err){ signaler(err.message); ACTIONS = []; }
+  toutAfficher();
+})();
+</script>
