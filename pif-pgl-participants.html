@@ -264,7 +264,8 @@ const Base = {
     if(EN_LIGNE){
       const tout = []; let jeton = "";
       do{
-        const u = FS + "?pageSize=300" + (jeton ? "&pageToken=" + jeton : "") + cle("?x");
+        const u0 = FS + "?pageSize=300" + (jeton ? "&pageToken=" + jeton : "");
+        const u = u0 + cle(u0);
         const d = await fs(u);
         for(const doc of (d.documents || [])){
           try{
@@ -283,7 +284,8 @@ const Base = {
   async ajouter(a){
     a.id = a.id || nouvelId();
     if(EN_LIGNE){
-      await fs(FS + "?documentId=" + encodeURIComponent(a.id) + cle("?x"),
+      const u = FS + "?documentId=" + encodeURIComponent(a.id);
+      await fs(u + cle(u),
         {method:"POST", headers:{"Content-Type":"application/json"},
          body: JSON.stringify({fields:{json:{stringValue: JSON.stringify(a)}}})});
       return a;
@@ -292,7 +294,8 @@ const Base = {
   },
   async modifier(a){
     if(EN_LIGNE){
-      await fs(FS + "/" + encodeURIComponent(a.id) + cle("?x"),
+      const u = FS + "/" + encodeURIComponent(a.id);
+      await fs(u + cle(u),
         {method:"PATCH", headers:{"Content-Type":"application/json"},
          body: JSON.stringify({fields:{json:{stringValue: JSON.stringify(a)}}})});
       return a;
@@ -304,7 +307,8 @@ const Base = {
   },
   async supprimer(id){
     if(EN_LIGNE){
-      await fs(FS + "/" + encodeURIComponent(id) + cle("?x"), {method:"DELETE"});
+      const u = FS + "/" + encodeURIComponent(id);
+      await fs(u + cle(u), {method:"DELETE"});
       return;
     }
     await Base.ecrire((await Base.lire()).filter(x => x.id !== id));
