@@ -37,15 +37,45 @@ h2{font-size:17px;margin:0 0 12px;font-weight:650}
 h2.suite{margin-top:26px}
 .sous-titre{font-size:13px;color:var(--ardoise);margin:-8px 0 14px}
 
-.rang{display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:center;
+.rang{display:grid;grid-template-columns:26px 1fr auto 16px;gap:10px;align-items:center;
+  width:100%;text-align:left;
   background:var(--carte);border:1px solid var(--trait);border-radius:var(--r);
   padding:12px 14px;margin-bottom:8px}
 .rang .place{font-family:var(--serif);font-size:15px;color:var(--ardoise);text-align:center}
 .rang .nom{font-weight:650;font-size:15px}
 .rang .detail{font-size:12px;color:var(--ardoise);margin-top:2px}
 .rang .gain{font-family:var(--serif);font-size:19px;text-align:right;white-space:nowrap}
-.barre{grid-column:1/4;height:4px;background:#E9EDED;border-radius:2px;overflow:hidden;margin-top:9px}
+.barre{grid-column:1/5;height:4px;background:#E9EDED;border-radius:2px;overflow:hidden;margin-top:9px}
 .barre span{display:block;height:100%;background:var(--vert);border-radius:2px}
+
+/* --- blocs dépliables --- */
+.chev{font-size:11px;color:var(--ardoise);text-align:center;transition:transform .2s}
+.ouvert .chev{transform:rotate(90deg)}
+.pliant{background:var(--carte);border:1px solid var(--trait);border-radius:var(--r);
+  margin-bottom:8px;overflow:hidden}
+.pliant .rang,.pliant .detenteur{border:none;border-radius:0;margin:0;background:none}
+.pliant.ouvert{border-color:var(--encre-clair)}
+.panneau{display:none;border-top:1px solid var(--trait);background:#F7F9F9;padding:4px 14px 10px}
+.panneau.ouvert{display:block}
+.dl{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;
+  padding:10px 0;border-bottom:1px solid var(--trait)}
+.dl:last-child{border-bottom:none}
+.dl-nom{font-size:14px;font-weight:600}
+.dl-meta{font-size:11.5px;color:var(--ardoise);margin-top:3px;line-height:1.45}
+.dl-part{font-family:var(--serif);font-size:16px;text-align:right;white-space:nowrap}
+.dl-etat{font-size:10.5px;margin-top:3px;text-align:right;white-space:nowrap;
+  padding:2px 7px;border-radius:20px;display:inline-block}
+.e-attente{background:var(--brique-pale);color:var(--brique)}
+.e-chez{background:var(--ambre-pale);color:#7A5200}
+.e-ok{background:var(--vert-pale);color:var(--vert)}
+
+.detenteur{display:grid;grid-template-columns:1fr auto 16px;gap:10px;align-items:center;
+  width:100%;text-align:left;background:var(--carte);border:1px solid var(--trait);
+  border-radius:var(--r);padding:13px 14px}
+.detenteur .qui-nom{font-weight:650;font-size:15px}
+.detenteur .qui-quoi{font-size:12px;color:var(--ardoise);margin-top:2px}
+.detenteur .qui-somme{font-family:var(--serif);font-size:20px;white-space:nowrap}
+.pliant.flou .detenteur .qui-nom{color:var(--ardoise);font-style:italic}
 
 .chiffres{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:22px}
 .chiffre{background:var(--carte);border:1px solid var(--trait);border-radius:var(--r);padding:13px}
@@ -110,6 +140,15 @@ nav button[aria-current="true"]{color:var(--encre);font-weight:650}
     <div id="liste-bilan"></div>
   </section>
 
+  <section class="vue" id="vue-argent">
+    <h2>Qui a l'argent en main</h2>
+    <p class="sous-titre">Les sommes déjà encaissées, regroupées par la personne qui les garde. Appuie sur un nom pour voir le détail.</p>
+    <div class="chiffres" id="chiffres-argent"></div>
+    <div id="liste-argent"></div>
+    <h2 class="suite">Pas encore encaissé</h2>
+    <div id="liste-attente"></div>
+  </section>
+
   <section class="vue" id="vue-bord">
     <h2>Chiffres clés</h2>
     <div class="chiffres" id="chiffres"></div>
@@ -131,6 +170,7 @@ nav button[aria-current="true"]{color:var(--encre);font-weight:650}
 
 <nav>
   <button data-vue="bilan" aria-current="true"><span class="pic">🏅</span>Bilan</button>
+  <button data-vue="argent"><span class="pic">💰</span>Qui a l'argent</button>
   <button data-vue="bord"><span class="pic">📊</span>Tableau de bord</button>
 </nav>
 
@@ -205,11 +245,15 @@ const aParticipe = (a, nom) => a.groupe || (a.participants || []).includes(nom);
 function bilan(actions){
   const lignes = MEMBRES.map(nom => {
     let montant = 0, heures = 0, jobs = 0;
+    const siennes = [];
     actions.forEach(a => {
       if(!aParticipe(a, nom)) return;
-      montant += parPersonne(a); heures += nb(a.duree); jobs++;
+      const part = parPersonne(a);
+      montant += part; heures += nb(a.duree); jobs++;
+      siennes.push({a, part});
     });
-    return {nom, montant, heures, jobs, parHeure: heures > 0 ? montant / heures : null};
+    siennes.sort((x, y) => (y.a.date || "").localeCompare(x.a.date || ""));
+    return {nom, montant, heures, jobs, siennes, parHeure: heures > 0 ? montant / heures : null};
   });
   const total = lignes.reduce((s,l) => s + l.montant, 0);
   lignes.forEach(l => l.part = total > 0 ? l.montant / total : 0);
@@ -234,7 +278,7 @@ const echappe = s => String(s == null ? "" : s).replace(/[&<>"]/g,
 
 let ACTIONS = [];
 
-function toutAfficher(){ afficherEntete(); afficherBilan(); afficherBord(); }
+function toutAfficher(){ afficherEntete(); afficherBilan(); afficherArgent(); afficherBord(); }
 
 function afficherEntete(){
   const total = ACTIONS.reduce((s,a) => s + nb(a.montant), 0);
@@ -258,16 +302,101 @@ function afficherBilan(){
   const lignes = bilan(ACTIONS);
   const max = Math.max(...lignes.map(l => l.montant), 1);
   cible.innerHTML = lignes.map((l, i) => `
-    <div class="rang">
-      <div class="place">${i + 1}</div>
-      <div>
-        <div class="nom">${echappe(l.nom)}</div>
-        <div class="detail">${l.jobs} action${l.jobs > 1 ? "s" : ""} · ${l.heures.toLocaleString("fr-FR")} h${
-          l.parHeure ? " · " + euro2(l.parHeure) + "/h" : ""}</div>
-      </div>
-      <div class="gain">${euro(l.montant)}</div>
-      <div class="barre"><span style="width:${l.montant / max * 100}%"></span></div>
+    <div class="pliant" id="bloc-bilan-${i}">
+      <button class="rang" data-cible="det-bilan-${i}" aria-expanded="false">
+        <div class="place">${i + 1}</div>
+        <div>
+          <div class="nom">${echappe(l.nom)}</div>
+          <div class="detail">${l.jobs} action${l.jobs > 1 ? "s" : ""} · ${l.heures.toLocaleString("fr-FR")} h${
+            l.parHeure ? " · " + euro2(l.parHeure) + "/h" : ""}</div>
+        </div>
+        <div class="gain">${euro(l.montant)}</div>
+        <div class="chev">▶</div>
+        <div class="barre"><span style="width:${l.montant / max * 100}%"></span></div>
+      </button>
+      <div class="panneau" id="det-bilan-${i}">${
+        l.siennes.length
+          ? l.siennes.map(s => ligneDetail(s.a, s.part)).join("")
+          : `<div class="dl"><div class="dl-nom" style="font-weight:400;color:var(--ardoise)">Aucune action pour l'instant.</div></div>`
+      }</div>
     </div>`).join("");
+}
+
+/* Une ligne de détail : l'action, la part de la personne, et où est l'argent. */
+function ligneDetail(a, part){
+  const divise = a.groupe ? "÷ " + MEMBRES.length + " (groupe)" : "÷ " + Math.max(1, nb(a.nbParticipants));
+  const bouts = [jour(a.date), euro(nb(a.montant)) + " " + divise];
+  if(nb(a.duree)) bouts.push(nb(a.duree).toLocaleString("fr-FR") + " h");
+  if(a.client) bouts.push(echappe(a.client));
+  if(a.lieu)   bouts.push(echappe(a.lieu));
+  const etat = a.encaisse === false
+    ? `<span class="dl-etat e-attente">pas encaissé</span>`
+    : a.gardePar
+      ? `<span class="dl-etat e-chez">chez ${echappe(a.gardePar)}</span>`
+      : `<span class="dl-etat e-ok">encaissé</span>`;
+  return `<div class="dl">
+    <div>
+      <div class="dl-nom">${echappe(a.nom) || "Sans nom"}</div>
+      <div class="dl-meta">${bouts.join(" · ")}${a.notes ? "<br>" + echappe(a.notes) : ""}</div>
+    </div>
+    <div><div class="dl-part">${euro2(part)}</div>${etat}</div>
+  </div>`;
+}
+
+/* ---- Onglet « Qui a l'argent » ---- */
+function afficherArgent(){
+  const encaissees = ACTIONS.filter(a => a.encaisse !== false);
+  const attente    = ACTIONS.filter(a => a.encaisse === false);
+
+  const parQui = new Map();
+  encaissees.forEach(a => {
+    const q = String(a.gardePar || "").trim();
+    const cle = q || "\u0000";
+    if(!parQui.has(cle)) parQui.set(cle, {qui: q, total: 0, actions: []});
+    const e = parQui.get(cle);
+    e.total += nb(a.montant);
+    e.actions.push(a);
+  });
+  const groupes = [...parQui.values()].sort((x, y) => y.total - x.total);
+  groupes.forEach(g => g.actions.sort((x, y) => (y.date || "").localeCompare(x.date || "")));
+
+  const enMain  = encaissees.reduce((s,a) => s + nb(a.montant), 0);
+  const flou    = (parQui.get("\u0000") || {total:0}).total;
+  const nommes  = groupes.filter(g => g.qui).length;
+  const duSomme = attente.reduce((s,a) => s + nb(a.montant), 0);
+
+  document.getElementById("chiffres-argent").innerHTML = `
+    <div class="chiffre large vert"><div class="valeur">${euro(enMain)}</div><div class="quoi">Encaissé, entre les mains de l'équipe</div></div>
+    <div class="chiffre"><div class="valeur">${nommes}</div><div class="quoi">Personne${nommes > 1 ? "s qui gardent" : " qui garde"} de l'argent</div></div>
+    <div class="chiffre ${flou > 0 ? "rouge" : ""}"><div class="valeur">${euro(flou)}</div><div class="quoi">Sans détenteur indiqué</div></div>`;
+
+  document.getElementById("liste-argent").innerHTML = groupes.length
+    ? groupes.map((g, i) => `
+      <div class="pliant ${g.qui ? "" : "flou"}">
+        <button class="detenteur" data-cible="det-argent-${i}" aria-expanded="false">
+          <div>
+            <div class="qui-nom">${g.qui ? echappe(g.qui) : "Détenteur non indiqué"}</div>
+            <div class="qui-quoi">${g.actions.length} action${g.actions.length > 1 ? "s" : ""}</div>
+          </div>
+          <div class="qui-somme">${euro(g.total)}</div>
+          <div class="chev">▶</div>
+        </button>
+        <div class="panneau" id="det-argent-${i}">${
+          g.actions.map(a => ligneDetail(a, nb(a.montant))).join("")
+        }</div>
+      </div>`).join("")
+    : `<div class="vide"><p>Rien d'encaissé pour l'instant</p><span>Les sommes apparaîtront ici dès qu'une action sera marquée comme encaissée.</span></div>`;
+
+  document.getElementById("liste-attente").innerHTML = attente.length
+    ? `<p class="sous-titre">${euro(duSomme)} à aller chercher.</p>` +
+      attente.sort((x,y) => (x.date || "").localeCompare(y.date || "")).map(a => `<div class="dette">
+        <div>
+          <div>${echappe(a.nom) || "Sans nom"}</div>
+          <div class="qui">${jour(a.date)}${a.client ? " · " + echappe(a.client) : ""}${a.contact ? " · " + echappe(a.contact) : ""}</div>
+        </div>
+        <div class="somme">${euro(nb(a.montant))}</div>
+      </div>`).join("")
+    : `<p class="sous-titre">Tout est encaissé.</p>`;
 }
 
 function afficherBord(){
@@ -308,6 +437,19 @@ function afficherBord(){
       </div>`).join("")
     : `<p class="sous-titre">Tout est encaissé.</p>`;
 }
+
+/* Déplier / replier n'importe quel bloc portant data-cible */
+document.addEventListener("click", e => {
+  const tete = e.target.closest("[data-cible]");
+  if(!tete) return;
+  const panneau = document.getElementById(tete.dataset.cible);
+  if(!panneau) return;
+  const ouvert = panneau.classList.toggle("ouvert");
+  tete.setAttribute("aria-expanded", String(ouvert));
+  tete.classList.toggle("ouvert", ouvert);
+  const bloc = tete.closest(".pliant");
+  if(bloc) bloc.classList.toggle("ouvert", ouvert);
+});
 
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
   document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-current", String(x === b)));
