@@ -139,14 +139,16 @@ nav button[aria-current="true"]{color:var(--encre);font-weight:650}
    SITE COORDINATEUR — bilan et tableau de bord, en lecture seule.
    La saisie des actions se fait sur l'autre site.
    ----------------------------------------------------------------
-   Mets la même adresse d'API que sur le site de saisie et les deux
-   travailleront sur les mêmes données :
-     GET {API_BASE}/actions      → tableau JSON des actions
-     GET {API_BASE}/membres      → (facultatif) ["Anouk","Lola",…]
-   Sans API, ce site lit les fichiers JSON que les participants
-   t'envoient depuis le site de saisie (bouton « Ajouter un fichier reçu »).
+   Mets ici EXACTEMENT les deux mêmes valeurs que dans le fichier
+   des participants : c'est ce qui fait que les deux sites lisent la
+   même base Firebase.
+   Tant que PROJET est vide, ce site lit seulement les fichiers JSON
+   que tu importes à la main (bouton « Ajouter un fichier reçu »).
 ================================================================ */
-const API_BASE = null;           // ex. "https://mon-serveur.fr/api"
+/* ▼▼▼ LES DEUX SEULES LIGNES À REMPLIR ▼▼▼ */
+const PROJET  = "pif-pgl-2026";
+const CLE_API = "AIzaSyCGQr9E811rageLZbi97TfBARGsmZS0Ask";
+/* ▲▲▲ ▲▲▲ */
 const PREMIER_MOIS = "2026-09";
 const NB_MOIS = 10;
 
@@ -157,19 +159,39 @@ const CLE = "pifpgl-coordination";
 let memoire = [], stockageOK = true;
 try{ localStorage.setItem("__t__","1"); localStorage.removeItem("__t__"); }catch(e){ stockageOK = false; }
 
+const EN_LIGNE = !!(PROJET && CLE_API);
+const FS = "https://firestore.googleapis.com/v1/projects/" + PROJET +
+           "/databases/(default)/documents/actions";
+
 const Base = {
   async lire(){
-    if(API_BASE){
-      const r = await fetch(API_BASE + "/actions");
-      if(!r.ok) throw new Error("Lecture impossible (" + r.status + ")");
-      return await r.json();
+    if(EN_LIGNE){
+      const tout = []; let jeton = "";
+      do{
+        const u = FS + "?pageSize=300" + (jeton ? "&pageToken=" + jeton : "") + "&key=" + CLE_API;
+        const r = await fetch(u);
+        if(!r.ok){
+          let d = ""; try{ d = (await r.json()).error.message; }catch(e){}
+          throw new Error("Base de données : " + (d || r.status));
+        }
+        const j = await r.json();
+        for(const doc of (j.documents || [])){
+          try{
+            const a = JSON.parse(doc.fields.json.stringValue);
+            a.id = doc.name.split("/").pop();
+            tout.push(a);
+          }catch(e){}
+        }
+        jeton = j.nextPageToken || "";
+      } while(jeton);
+      return tout;
     }
     if(!stockageOK) return memoire;
     try{ return JSON.parse(localStorage.getItem(CLE) || "[]"); }catch(e){ return []; }
   },
   async ecrire(t){
     memoire = t;
-    if(!API_BASE && stockageOK) localStorage.setItem(CLE, JSON.stringify(t));
+    if(!EN_LIGNE && stockageOK) localStorage.setItem(CLE, JSON.stringify(t));
   }
 };
 
@@ -309,7 +331,7 @@ function exporterCSV(){
               "pif-pgl-actions.csv", "text/csv");
 }
 function importerJSON(){
-  if(API_BASE){ signaler("Les données viennent de l'API, l'import est inutile."); return; }
+  if(EN_LIGNE){ signaler("Les données viennent de la base commune, l'import est inutile."); return; }
   const input = document.createElement("input");
   input.type = "file"; input.accept = ".json,application/json"; input.multiple = true;
   input.onchange = async () => {
@@ -338,12 +360,6 @@ function signaler(m){
 }
 
 (async function(){
-  if(API_BASE){
-    try{
-      const r = await fetch(API_BASE + "/membres");
-      if(r.ok){ const m = await r.json(); if(Array.isArray(m) && m.length) MEMBRES = m; }
-    }catch(e){}
-  }
   try{ ACTIONS = await Base.lire(); }catch(err){ signaler(err.message); ACTIONS = []; }
   toutAfficher();
 })();

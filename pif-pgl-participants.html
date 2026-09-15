@@ -214,24 +214,25 @@ label{display:block;font-size:12px;color:var(--ardoise);margin:0 0 5px}
    les actions de l'équipe. Ils ne voient pas le bilan par personne
    ni le tableau de bord détaillé — ça, c'est le site de coordination.
    ----------------------------------------------------------------
-   ENVOI AUTOMATIQUE
-   Renseigne API_BASE : chaque action enregistrée part sur le serveur
-   tout de suite, et la liste se met à jour toute seule (au retour sur
-   l'app et toutes les 45 s). Aucun bouton d'envoi, aucun fichier.
-     GET    {API_BASE}/actions
-     POST   {API_BASE}/actions
-     PUT    {API_BASE}/actions/{id}
-     DELETE {API_BASE}/actions/{id}
-     GET    {API_BASE}/membres      (facultatif : ["Anouk","Lola",…])
+   BASE DE DONNÉES COMMUNE (Firebase Firestore)
+   Remplis PROJET et CLE_API ci-dessous avec les deux valeurs de ta
+   console Firebase. Les MÊMES valeurs doivent être mises dans le
+   fichier de coordination, sinon les deux sites ne parlent pas à la
+   même base.
+   Chaque action enregistrée part aussitôt chez tout le monde, et la
+   liste se met à jour au retour sur l'app et toutes les 45 s.
    Format d'une action :
      { id, date:"2026-09-12", nom, client, contact, lieu,
        montant:240, duree:4, groupe:false, nbParticipants:3,
        participants:["Anouk","Lola","Gab"], encaisse:true,
        paiement:"Espèces", gardePar:"Anouk", notes:"" }
-   Tant qu'API_BASE vaut null, chaque téléphone ne voit que ses
-   propres actions : il n'y a pas de serveur pour les partager.
+   Tant que PROJET est vide, chaque téléphone ne voit que ses propres
+   actions : il n'y a pas de base pour les partager.
 ================================================================ */
-const API_BASE = null;           // ex. "https://mon-serveur.fr/api"
+/* ▼▼▼ LES DEUX SEULES LIGNES À REMPLIR ▼▼▼ */
+const PROJET  = "pif-pgl-2026";
+const CLE_API = "AIzaSyCGQr9E811rageLZbi97TfBARGsmZS0Ask";
+/* ▲▲▲ ▲▲▲ */
 const PREMIER_MOIS = "2026-09";  // la collecte va de ce mois-là à juin
 const NB_MOIS = 10;
 const RAFRAICHIR_MS = 45000;
@@ -243,32 +244,58 @@ const CLE = "pifpgl-actions", CLE_MOI = "pifpgl-moi";
 let memoire = [], stockageOK = true, MOI = null;
 try{ localStorage.setItem("__t__","1"); localStorage.removeItem("__t__"); }catch(e){ stockageOK = false; }
 
+const EN_LIGNE = !!(PROJET && CLE_API);
+const FS = "https://firestore.googleapis.com/v1/projects/" + PROJET +
+           "/databases/(default)/documents/actions";
+const cle = (s) => (s.includes("?") ? "&" : "?") + "key=" + CLE_API;
+const nouvelId = () => Date.now() + "-" + Math.random().toString(36).slice(2,7);
+
+async function fs(url, options){
+  const r = await fetch(url, options);
+  if(!r.ok){
+    let d = ""; try{ d = (await r.json()).error.message; }catch(e){}
+    throw new Error("Base de données : " + (d || r.status));
+  }
+  return r.status === 200 ? await r.json() : {};
+}
+
 const Base = {
   async lire(){
-    if(API_BASE){
-      const r = await fetch(API_BASE + "/actions");
-      if(!r.ok) throw new Error("Impossible de charger les actions (" + r.status + ")");
-      return await r.json();
+    if(EN_LIGNE){
+      const tout = []; let jeton = "";
+      do{
+        const u = FS + "?pageSize=300" + (jeton ? "&pageToken=" + jeton : "") + cle("?x");
+        const d = await fs(u);
+        for(const doc of (d.documents || [])){
+          try{
+            const a = JSON.parse(doc.fields.json.stringValue);
+            a.id = doc.name.split("/").pop();
+            tout.push(a);
+          }catch(e){}
+        }
+        jeton = d.nextPageToken || "";
+      } while(jeton);
+      return tout;
     }
     if(!stockageOK) return memoire;
     try{ return JSON.parse(localStorage.getItem(CLE) || "[]"); }catch(e){ return []; }
   },
   async ajouter(a){
-    if(API_BASE){
-      const r = await fetch(API_BASE + "/actions",
-        {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(a)});
-      if(!r.ok) throw new Error("L'action n'a pas pu être envoyée. Réessaie.");
-      return await r.json();
+    a.id = a.id || nouvelId();
+    if(EN_LIGNE){
+      await fs(FS + "?documentId=" + encodeURIComponent(a.id) + cle("?x"),
+        {method:"POST", headers:{"Content-Type":"application/json"},
+         body: JSON.stringify({fields:{json:{stringValue: JSON.stringify(a)}}})});
+      return a;
     }
-    a.id = a.id || (Date.now() + "-" + Math.random().toString(36).slice(2,7));
     const t = await Base.lire(); t.push(a); await Base.ecrire(t); return a;
   },
   async modifier(a){
-    if(API_BASE){
-      const r = await fetch(API_BASE + "/actions/" + a.id,
-        {method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(a)});
-      if(!r.ok) throw new Error("La modification n'a pas pu être envoyée. Réessaie.");
-      return await r.json();
+    if(EN_LIGNE){
+      await fs(FS + "/" + encodeURIComponent(a.id) + cle("?x"),
+        {method:"PATCH", headers:{"Content-Type":"application/json"},
+         body: JSON.stringify({fields:{json:{stringValue: JSON.stringify(a)}}})});
+      return a;
     }
     const t = await Base.lire();
     const i = t.findIndex(x => x.id === a.id);
@@ -276,16 +303,15 @@ const Base = {
     await Base.ecrire(t); return a;
   },
   async supprimer(id){
-    if(API_BASE){
-      const r = await fetch(API_BASE + "/actions/" + id, {method:"DELETE"});
-      if(!r.ok) throw new Error("La suppression n'a pas pu être envoyée. Réessaie.");
+    if(EN_LIGNE){
+      await fs(FS + "/" + encodeURIComponent(id) + cle("?x"), {method:"DELETE"});
       return;
     }
     await Base.ecrire((await Base.lire()).filter(x => x.id !== id));
   },
   async ecrire(t){
     memoire = t;
-    if(!API_BASE && stockageOK) localStorage.setItem(CLE, JSON.stringify(t));
+    if(!EN_LIGNE && stockageOK) localStorage.setItem(CLE, JSON.stringify(t));
   }
 };
 
@@ -518,7 +544,7 @@ document.getElementById("btn-enregistrer").onclick = async () => {
     if(enCours) await Base.modifier(a); else await Base.ajouter(a);
     ACTIONS = await Base.lire();
     fermer(); toutAfficher();
-    signaler(API_BASE ? "Action envoyée à toute l'équipe." : "Action enregistrée.");
+    signaler(EN_LIGNE ? "Action envoyée à toute l'équipe." : "Action enregistrée.");
   }catch(err){ signaler(err.message); }
   finally{ bouton.disabled = false; bouton.textContent = "Enregistrer"; }
 };
@@ -542,7 +568,7 @@ async function recharger(silencieux){
   try{ ACTIONS = await Base.lire(); toutAfficher(); }
   catch(err){ if(!silencieux) signaler(err.message); }
 }
-if(API_BASE){
+if(EN_LIGNE){
   setInterval(() => { if(document.visibilityState === "visible") recharger(true); }, RAFRAICHIR_MS);
   document.addEventListener("visibilitychange", () => {
     if(document.visibilityState === "visible") recharger(true);
@@ -552,18 +578,12 @@ if(API_BASE){
 /* ---------- démarrage ---------- */
 (async function(){
   construireNoms();
-  if(API_BASE){
-    try{
-      const r = await fetch(API_BASE + "/membres");
-      if(r.ok){ const m = await r.json(); if(Array.isArray(m) && m.length){ MEMBRES = m; construireNoms(); } }
-    }catch(e){}
-  }
   MOI = stockageOK ? localStorage.getItem(CLE_MOI) : null;
   if(MOI && MEMBRES.includes(MOI)) document.getElementById("btn-moi").textContent = MOI;
   else { MOI = null; document.getElementById("accueil").classList.add("ouvert"); }
 
   try{ ACTIONS = await Base.lire(); }catch(err){ signaler(err.message); ACTIONS = []; }
   toutAfficher();
-  if(!API_BASE) signaler("Sans serveur : tu ne vois que les actions saisies sur ce téléphone.");
+  if(!EN_LIGNE) signaler("Sans base de données : tu ne vois que les actions saisies sur ce téléphone.");
 })();
 </script>
